@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'roadmap_screen.dart';
 import 'architect_screen.dart';
-import 'history_screen.dart';
+import 'skill_forge_screen.dart';
 import '../core/constants.dart';
 
 class MainNavigator extends StatefulWidget {
@@ -17,8 +17,8 @@ class _MainNavigatorState extends State<MainNavigator> {
   final List<Widget> _pages = [
     const HomeScreen(),
     const RoadmapScreen(),
+    const SkillForgeScreen(),
     const ArchitectScreen(),
-    const HistoryScreen(),
   ];
 
   @override
@@ -41,12 +41,12 @@ class _MainNavigatorState extends State<MainNavigator> {
             label: "Roadmap",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.architecture_rounded),
-            label: "Architect",
+            icon: Icon(Icons.build_rounded),
+            label: "Forge",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history_rounded),
-            label: "History",
+            icon: Icon(Icons.architecture_rounded),
+            label: "Architect",
           ),
         ],
       ),

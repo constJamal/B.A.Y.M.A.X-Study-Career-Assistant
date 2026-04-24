@@ -5,35 +5,35 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/constants.dart';
 import '../services/ai_service.dart';
 
-class ArchitectScreen extends StatefulWidget {
-  const ArchitectScreen({super.key});
+class SkillForgeScreen extends StatefulWidget {
+  const SkillForgeScreen({super.key});
 
   @override
-  State<ArchitectScreen> createState() => _ArchitectScreenState();
+  State<SkillForgeScreen> createState() => _SkillForgeScreenState();
 }
 
-class ProjectArchitecture {
-  final String frontend;
-  final String backend;
-  final String database;
-  final String deployment;
-  final List<String> keyFeatures;
+class SkillForge {
+  final String skillName;
+  final String description;
+  final List<String> learningResources;
+  final List<String> practiceProjects;
+  final String timeEstimate;
 
-  ProjectArchitecture({
-    required this.frontend,
-    required this.backend,
-    required this.database,
-    required this.deployment,
-    required this.keyFeatures,
+  SkillForge({
+    required this.skillName,
+    required this.description,
+    required this.learningResources,
+    required this.practiceProjects,
+    required this.timeEstimate,
   });
 
-  factory ProjectArchitecture.fromMap(Map<String, dynamic> map) {
-    return ProjectArchitecture(
-      frontend: map['frontend']?.toString() ?? 'Not specified',
-      backend: map['backend']?.toString() ?? 'Not specified',
-      database: map['database']?.toString() ?? 'Not specified',
-      deployment: map['deployment']?.toString() ?? 'Not specified',
-      keyFeatures: _listFrom(map['key_features']),
+  factory SkillForge.fromMap(Map<String, dynamic> map) {
+    return SkillForge(
+      skillName: map['skill_name']?.toString() ?? 'Unknown Skill',
+      description: map['description']?.toString() ?? '',
+      learningResources: _listFrom(map['learning_resources']),
+      practiceProjects: _listFrom(map['practice_projects']),
+      timeEstimate: map['time_estimate']?.toString() ?? 'Not specified',
     );
   }
 
@@ -52,77 +52,79 @@ class ProjectArchitecture {
   }
 }
 
-class _ArchitectScreenState extends State<ArchitectScreen> {
+class _SkillForgeScreenState extends State<SkillForgeScreen> {
   final _controller = TextEditingController();
-  ProjectArchitecture? _architecture;
+  final List<SkillForge> _skills = [];
   String _feedback =
-      'Describe your project idea to generate a structured architecture.';
+      'Enter a skill you want to master to get a personalized learning plan.';
   String _rawOutput = '';
   bool _loading = false;
 
   Future<void> _run() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      setState(
-        () => _feedback = 'Please log in to generate project architecture.',
-      );
+      setState(() => _feedback = 'Please log in to forge skills.');
       return;
     }
 
     if (_controller.text.trim().isEmpty) {
-      setState(() => _feedback = 'Please describe your project idea first.');
+      setState(() => _feedback = 'Please enter a skill to forge.');
       return;
     }
 
     setState(() {
       _loading = true;
-      _feedback = 'Designing project architecture...';
-      _architecture = null;
+      _feedback = 'Forging your skill mastery plan...';
+      _skills.clear();
       _rawOutput = '';
     });
 
     try {
-      final raw = await AIService.consultBaymax(_controller.text, 'project');
+      final raw = await AIService.consultBaymax(
+        _controller.text,
+        'skill_forge',
+      );
       await Supabase.instance.client.from('career_logs').insert({
         'user_id': user.id,
-        'task_type': 'project_architect',
+        'task_type': 'skill_forge',
         'user_input': _controller.text,
         'baymax_response': raw,
       });
 
-      final parsed = _parseArchitecture(raw);
+      final parsed = _parseSkills(raw);
       setState(() {
         _rawOutput = raw;
-        if (parsed != null) {
-          _architecture = parsed;
-          _feedback = 'Project architecture generated successfully.';
+        if (parsed.isNotEmpty) {
+          _skills.addAll(parsed);
+          _feedback = 'Skill forge plan generated successfully.';
         } else {
           _feedback =
               'I could not parse the AI response. Review the raw output below.';
         }
       });
     } catch (error) {
-      setState(
-        () => _feedback = 'Error generating architecture: ${error.toString()}',
-      );
+      setState(() => _feedback = 'Error forging skills: ${error.toString()}');
     } finally {
       setState(() => _loading = false);
     }
   }
 
-  ProjectArchitecture? _parseArchitecture(String raw) {
+  List<SkillForge> _parseSkills(String raw) {
     for (final candidate in [raw, _extractJsonObject(raw)]) {
       if (candidate == null) continue;
       try {
         final decoded = jsonDecode(candidate);
-        if (decoded is Map<String, dynamic>) {
-          return ProjectArchitecture.fromMap(decoded);
+        if (decoded is Map<String, dynamic> && decoded['skills'] is List) {
+          return (decoded['skills'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(SkillForge.fromMap)
+              .toList();
         }
       } catch (_) {
         continue;
       }
     }
-    return null;
+    return [];
   }
 
   String? _extractJsonObject(String input) {
@@ -144,69 +146,9 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
     return null;
   }
 
-  Widget _buildArchitectureCard() {
-    if (_architecture == null) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildComponentCard(
-          'Frontend',
-          _architecture!.frontend,
-          Icons.web,
-          AppConfig.accentBlue,
-        ),
-        const SizedBox(height: 16),
-        _buildComponentCard(
-          'Backend',
-          _architecture!.backend,
-          Icons.code,
-          AppConfig.primaryNavy,
-        ),
-        const SizedBox(height: 16),
-        _buildComponentCard(
-          'Database',
-          _architecture!.database,
-          Icons.storage,
-          Colors.orange,
-        ),
-        const SizedBox(height: 16),
-        _buildComponentCard(
-          'Deployment',
-          _architecture!.deployment,
-          Icons.cloud_upload,
-          Colors.green,
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Key Features',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _architecture!.keyFeatures
-              .map(
-                (feature) => Chip(
-                  label: Text(feature),
-                  backgroundColor: AppConfig.surfaceGrey,
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComponentCard(
-    String title,
-    String content,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildSkillCard(SkillForge skill) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       elevation: 3,
       child: Padding(
@@ -214,29 +156,86 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              skill.skillName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              skill.description,
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 12),
+                const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                const SizedBox(width: 6),
                 Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  skill.timeEstimate,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(content, style: const TextStyle(fontSize: 14, height: 1.5)),
+            if (skill.learningResources.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Learning Resources',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: skill.learningResources
+                    .map(
+                      (resource) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ', style: TextStyle(fontSize: 16)),
+                            Expanded(
+                              child: Text(
+                                resource,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            if (skill.practiceProjects.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Practice Projects',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: skill.practiceProjects
+                    .map(
+                      (project) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• ', style: TextStyle(fontSize: 16)),
+                            Expanded(
+                              child: Text(
+                                project,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ],
         ),
       ),
@@ -279,7 +278,7 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
     return Scaffold(
       backgroundColor: AppConfig.surfaceGrey,
       appBar: AppBar(
-        title: const Text('Project Architect'),
+        title: const Text('Skill Forge'),
         centerTitle: true,
         backgroundColor: AppConfig.primaryNavy,
       ),
@@ -305,12 +304,12 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Design your project architecture.',
+                    'Forge your skills with precision.',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Describe your project idea to get recommendations for frontend, backend, database, and deployment strategies.',
+                    'Enter a skill you want to master, and get a personalized learning plan with resources and projects.',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.black54,
@@ -320,10 +319,10 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                   const SizedBox(height: 18),
                   TextField(
                     controller: _controller,
-                    maxLines: 4,
+                    maxLines: 3,
                     decoration: InputDecoration(
                       hintText:
-                          'e.g. A social media app for students with chat and posts',
+                          'e.g. React development, machine learning, UI/UX design',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -351,7 +350,7 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                                 strokeWidth: 2.5,
                               ),
                             )
-                          : const Text('Generate Architecture'),
+                          : const Text('Forge Skill'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -363,12 +362,9 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            if (_architecture != null) _buildArchitectureCard(),
-            if (_architecture == null && _rawOutput.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              _buildRawOutput(),
-            ],
-            if (_architecture == null && _rawOutput.isEmpty) ...[
+            if (_skills.isNotEmpty)
+              ..._skills.map((skill) => _buildSkillCard(skill)).toList()
+            else ...[
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -379,7 +375,7 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text(
-                      'What you\'ll get',
+                      'What Skill Forge offers',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -387,27 +383,31 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                     ),
                     SizedBox(height: 10),
                     Text(
-                      '• Frontend framework recommendations.',
+                      '• Structured learning paths for any skill.',
                       style: TextStyle(fontSize: 14),
                     ),
                     SizedBox(height: 6),
                     Text(
-                      '• Backend technology stack.',
+                      '• Curated resources and practice projects.',
                       style: TextStyle(fontSize: 14),
                     ),
                     SizedBox(height: 6),
                     Text(
-                      '• Database choice and setup.',
+                      '• Time estimates for mastery.',
                       style: TextStyle(fontSize: 14),
                     ),
                     SizedBox(height: 6),
                     Text(
-                      '• Deployment strategy.',
+                      '• Personalized to your skill level.',
                       style: TextStyle(fontSize: 14),
                     ),
                   ],
                 ),
               ),
+            ],
+            if (_skills.isEmpty && _rawOutput.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              _buildRawOutput(),
             ],
           ],
         ),
