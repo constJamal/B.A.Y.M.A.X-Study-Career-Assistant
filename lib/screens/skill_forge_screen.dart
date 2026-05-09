@@ -1,417 +1,321 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../core/constants.dart';
-import '../services/ai_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/theme_provider.dart';
+import '../providers/skill_forge_state_provider.dart';
+import '../widgets/glassmorphic_container.dart';
+import '../widgets/shimmer_loading.dart';
 
-class SkillForgeScreen extends StatefulWidget {
+class SkillForgeScreen extends ConsumerStatefulWidget {
   const SkillForgeScreen({super.key});
 
   @override
-  State<SkillForgeScreen> createState() => _SkillForgeScreenState();
+  ConsumerState<SkillForgeScreen> createState() => _SkillForgeScreenState();
 }
 
-class SkillForge {
-  final String skillName;
-  final String description;
-  final List<String> learningResources;
-  final List<String> practiceProjects;
-  final String timeEstimate;
+class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
+  late TextEditingController _topicController;
+  late TextEditingController _durationController;
+  late String _masteryLevel;
 
-  SkillForge({
-    required this.skillName,
-    required this.description,
-    required this.learningResources,
-    required this.practiceProjects,
-    required this.timeEstimate,
-  });
-
-  factory SkillForge.fromMap(Map<String, dynamic> map) {
-    return SkillForge(
-      skillName: map['skill_name']?.toString() ?? 'Unknown Skill',
-      description: map['description']?.toString() ?? '',
-      learningResources: _listFrom(map['learning_resources']),
-      practiceProjects: _listFrom(map['practice_projects']),
-      timeEstimate: map['time_estimate']?.toString() ?? 'Not specified',
-    );
+  @override
+  void initState() {
+    super.initState();
+    final initialState = ref.read(forgeProvider);
+    _topicController = TextEditingController(text: initialState.topic);
+    _durationController = TextEditingController(text: initialState.duration);
+    _masteryLevel = initialState.mastery.isEmpty ? 'Beginner' : initialState.mastery;
   }
 
-  static List<String> _listFrom(dynamic value) {
-    if (value is List) {
-      return value.map((item) => item.toString()).toList();
-    }
-    if (value is String) {
-      return value
-          .split(RegExp(r'\n|,'))
-          .map((item) => item.trim())
-          .where((item) => item.isNotEmpty)
-          .toList();
-    }
-    return [];
-  }
-}
-
-class _SkillForgeScreenState extends State<SkillForgeScreen> {
-  final _controller = TextEditingController();
-  final List<SkillForge> _skills = [];
-  String _feedback =
-      'Enter a skill you want to master to get a personalized learning plan.';
-  String _rawOutput = '';
-  bool _loading = false;
-
-  Future<void> _run() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      setState(() => _feedback = 'Please log in to forge skills.');
-      return;
-    }
-
-    if (_controller.text.trim().isEmpty) {
-      setState(() => _feedback = 'Please enter a skill to forge.');
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _feedback = 'Forging your skill mastery plan...';
-      _skills.clear();
-      _rawOutput = '';
-    });
-
-    try {
-      final raw = await AIService.consultBaymax(
-        _controller.text,
-        'skill_forge',
-      );
-      await Supabase.instance.client.from('career_logs').insert({
-        'user_id': user.id,
-        'task_type': 'skill_forge',
-        'user_input': _controller.text,
-        'baymax_response': raw,
-      });
-
-      final parsed = _parseSkills(raw);
-      setState(() {
-        _rawOutput = raw;
-        if (parsed.isNotEmpty) {
-          _skills.addAll(parsed);
-          _feedback = 'Skill forge plan generated successfully.';
-        } else {
-          _feedback =
-              'I could not parse the AI response. Review the raw output below.';
-        }
-      });
-    } catch (error) {
-      setState(() => _feedback = 'Error forging skills: ${error.toString()}');
-    } finally {
-      setState(() => _loading = false);
-    }
+  @override
+  void dispose() {
+    _topicController.dispose();
+    _durationController.dispose();
+    super.dispose();
   }
 
-  List<SkillForge> _parseSkills(String raw) {
-    for (final candidate in [raw, _extractJsonObject(raw)]) {
-      if (candidate == null) continue;
-      try {
-        final decoded = jsonDecode(candidate);
-        if (decoded is Map<String, dynamic> && decoded['skills'] is List) {
-          return (decoded['skills'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map(SkillForge.fromMap)
-              .toList();
-        }
-      } catch (_) {
-        continue;
-      }
-    }
-    return [];
-  }
+  void _forgeCurriculum() {
+    if (_topicController.text.isEmpty || _durationController.text.isEmpty) return;
 
-  String? _extractJsonObject(String input) {
-    final start = input.indexOf('{');
-    if (start < 0) return null;
-
-    var depth = 0;
-    for (var i = start; i < input.length; i++) {
-      final char = input[i];
-      if (char == '{') {
-        depth++;
-      } else if (char == '}') {
-        depth--;
-        if (depth == 0) {
-          return input.substring(start, i + 1);
-        }
-      }
-    }
-    return null;
-  }
-
-  Widget _buildSkillCard(SkillForge skill) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              skill.skillName,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              skill.description,
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                const SizedBox(width: 6),
-                Text(
-                  skill.timeEstimate,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            if (skill.learningResources.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'Learning Resources',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: skill.learningResources
-                    .map(
-                      (resource) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• ', style: TextStyle(fontSize: 16)),
-                            Expanded(
-                              child: Text(
-                                resource,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-            if (skill.practiceProjects.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Text(
-                'Practice Projects',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: skill.practiceProjects
-                    .map(
-                      (project) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• ', style: TextStyle(fontSize: 16)),
-                            Expanded(
-                              child: Text(
-                                project,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRawOutput() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color.fromRGBO(158, 158, 158, 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Raw AI Output',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 180,
-            child: SingleChildScrollView(
-              child: SelectableText(
-                _rawOutput,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    final notifier = ref.read(forgeProvider.notifier);
+    notifier.setInputs(_topicController.text, _masteryLevel, _durationController.text);
+    notifier.forgeCurriculum();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = ref.watch(themeProvider.notifier).currentTheme;
+    final forgeState = ref.watch(forgeProvider);
+
     return Scaffold(
-      backgroundColor: AppConfig.surfaceGrey,
+      backgroundColor: theme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Skill Forge'),
-        centerTitle: true,
-        backgroundColor: AppConfig.primaryNavy,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Data-Grounded Skill Forge',
+          style: TextStyle(
+            color: theme.primaryColor,
+            fontFamily: theme.fontFamily,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
+            Text(
+              'What are we building today?',
+              style: TextStyle(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  const BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.04),
-                    offset: Offset(0, 8),
-                    blurRadius: 20,
-                  ),
-                ],
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                fontFamily: theme.fontFamily,
               ),
+            ),
+            const SizedBox(height: 24),
+            GlassmorphicContainer(
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Forge your skills with precision.',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Enter a skill you want to master, and get a personalized learning plan with resources and projects.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
+                  _buildInputLabel('Topic / Skill', theme),
+                  const SizedBox(height: 8),
                   TextField(
-                    controller: _controller,
-                    maxLines: 3,
+                    controller: _topicController,
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText:
-                          'e.g. React development, machine learning, UI/UX design',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      hintText: 'e.g. Flutter Web, Rust, DevOps',
+                      hintStyle: const TextStyle(color: Colors.white38),
                       filled: true,
-                      fillColor: AppConfig.surfaceGrey,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
+                  
+                  _buildInputLabel('Current Mastery Level', theme),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _masteryLevel,
+                    dropdownColor: theme.cardColor,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: ['Beginner', 'Intermediate', 'Advanced', 'Pro']
+                        .map((level) => DropdownMenuItem(
+                              value: level,
+                              child: Text(level),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _masteryLevel = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  _buildInputLabel('Target Duration', theme),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _durationController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. 2 weeks, 30 days',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
                   SizedBox(
-                    height: 48,
+                    width: double.infinity,
+                    height: 50,
                     child: ElevatedButton(
+                      onPressed: forgeState.isForging ? null : _forgeCurriculum,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppConfig.accentBlue,
+                        backgroundColor: theme.primaryColor,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _loading ? null : _run,
-                      child: _loading
+                      child: forgeState.isForging
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
+                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
                             )
-                          : const Text('Forge Skill'),
+                          : Text(
+                              'Forge Curriculum',
+                              style: TextStyle(
+                                color: theme.backgroundColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _feedback,
-                    style: const TextStyle(color: Colors.black54),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            if (_skills.isNotEmpty)
-              ..._skills.map((skill) => _buildSkillCard(skill)).toList()
-            else ...[
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'What Skill Forge offers',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      '• Structured learning paths for any skill.',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      '• Curated resources and practice projects.',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      '• Time estimates for mastery.',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      '• Personalized to your skill level.',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (_skills.isEmpty && _rawOutput.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              _buildRawOutput(),
-            ],
+            const SizedBox(height: 32),
+            if (forgeState.isForging)
+              const ShimmerCardList(count: 3, itemHeight: 120)
+            else if (forgeState.curriculum.isNotEmpty)
+              _buildTechnicalSpecUI(forgeState, theme),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildInputLabel(String label, ApparelTheme theme) {
+    return Text(
+      label,
+      style: TextStyle(
+        color: theme.secondaryColor,
+        fontWeight: FontWeight.w600,
+        fontFamily: theme.fontFamily,
+      ),
+    );
+  }
+
+  Widget _buildTechnicalSpecUI(ForgeState forgeState, ApparelTheme theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Technical Spec Sheet',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                fontFamily: theme.fontFamily,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.accentColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.accentColor),
+              ),
+              child: const Text(
+                '2026 Verified',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: forgeState.curriculum.length,
+          itemBuilder: (context, index) {
+            final item = forgeState.curriculum[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: GlassmorphicContainer(
+                padding: const EdgeInsets.all(16),
+                borderColor: theme.secondaryColor.withOpacity(0.3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getIconForType(item.type),
+                        color: theme.primaryColor,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: theme.fontFamily,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            item.description,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(Icons.link, color: theme.accentColor, size: 16),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  item.url,
+                                  style: TextStyle(
+                                    color: theme.accentColor,
+                                    fontSize: 12,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  IconData _getIconForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'doc':
+        return Icons.description;
+      case 'video':
+        return Icons.play_circle_filled;
+      case 'repo':
+        return Icons.code;
+      default:
+        return Icons.article;
+    }
   }
 }

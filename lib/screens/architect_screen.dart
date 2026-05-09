@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/constants.dart';
+import '../widgets/app_drawer.dart';
+import '../widgets/baymax_app_bar.dart';
 import '../services/ai_service.dart';
 
 class ArchitectScreen extends StatefulWidget {
@@ -205,71 +207,95 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
     IconData icon,
     Color color,
   ) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
+    return Builder(
+      builder: (context) => Card(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        color: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 24),
                   ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                content,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(content, style: const TextStyle(fontSize: 14, height: 1.5)),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildRawOutput() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color.fromRGBO(158, 158, 158, 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Raw AI Output',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return Builder(
+      builder: (context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white10
+                : const Color.fromRGBO(158, 158, 158, 0.15),
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 180,
-            child: SingleChildScrollView(
-              child: SelectableText(
-                _rawOutput,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Raw AI Output',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  _rawOutput,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -277,12 +303,9 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConfig.surfaceGrey,
-      appBar: AppBar(
-        title: const Text('Project Architect'),
-        centerTitle: true,
-        backgroundColor: AppConfig.primaryNavy,
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      drawer: const AppDrawer(),
+      appBar: const BaymaxAppBar(title: 'Project Architect'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(
@@ -291,12 +314,14 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
-                  const BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.04),
-                    offset: Offset(0, 8),
+                  BoxShadow(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.black26
+                        : const Color.fromRGBO(0, 0, 0, 0.04),
+                    offset: const Offset(0, 8),
                     blurRadius: 20,
                   ),
                 ],
@@ -309,11 +334,13 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Describe your project idea to get recommendations for frontend, backend, database, and deployment strategies.',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.black54,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : Colors.black54,
                       height: 1.5,
                     ),
                   ),
@@ -357,7 +384,11 @@ class _ArchitectScreenState extends State<ArchitectScreen> {
                   const SizedBox(height: 12),
                   Text(
                     _feedback,
-                    style: const TextStyle(color: Colors.black54),
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : Colors.black54,
+                    ),
                   ),
                 ],
               ),

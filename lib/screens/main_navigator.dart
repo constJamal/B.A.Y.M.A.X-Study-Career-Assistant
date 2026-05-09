@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'roadmap_screen.dart';
-import 'architect_screen.dart';
 import 'skill_forge_screen.dart';
+import 'study_buddy_screen.dart';
 import '../core/constants.dart';
 
 class MainNavigator extends StatefulWidget {
@@ -18,7 +18,7 @@ class _MainNavigatorState extends State<MainNavigator> {
     const HomeScreen(),
     const RoadmapScreen(),
     const SkillForgeScreen(),
-    const ArchitectScreen(),
+    const StudyBuddyScreen(),
   ];
 
   @override
@@ -28,12 +28,14 @@ class _MainNavigatorState extends State<MainNavigator> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppConfig.accentBlue,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: AppConfig.primaryBrand,
+        unselectedItemColor: AppConfig.textSecondary,
+        backgroundColor: Colors.white,
+        elevation: 8,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
+            icon: Icon(Icons.home_rounded),
             label: "Home",
           ),
           BottomNavigationBarItem(
@@ -41,12 +43,12 @@ class _MainNavigatorState extends State<MainNavigator> {
             label: "Roadmap",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.build_rounded),
+            icon: Icon(Icons.auto_fix_high_rounded),
             label: "Forge",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.architecture_rounded),
-            label: "Architect",
+            icon: Icon(Icons.school_rounded),
+            label: "Study Buddy",
           ),
         ],
       ),
