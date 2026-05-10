@@ -24,13 +24,14 @@ class ForgeState {
 
   ForgeState({
     this.topic = '',
-    this.mastery = 'Beginner',
+    this.mastery = '',
     this.duration = '',
     this.progress = 0.0,
     this.curriculum = const [],
     this.isForging = false,
   });
 
+  // This "manual" copyWith replaces the one Freezed usually makes
   ForgeState copyWith({
     String? topic,
     String? mastery,
@@ -50,8 +51,9 @@ class ForgeState {
   }
 }
 
-class ForgeNotifier extends StateNotifier<ForgeState> {
-  ForgeNotifier() : super(ForgeState());
+class ForgeNotifier extends Notifier<ForgeState> {
+  @override
+  ForgeState build() => ForgeState();
 
   void setInputs(String topic, String mastery, String duration) {
     state = state.copyWith(topic: topic, mastery: mastery, duration: duration);
@@ -64,11 +66,8 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
   Future<void> forgeCurriculum() async {
     state = state.copyWith(isForging: true);
 
-    // Simulate calling the Groq Integration API
-    // which would return a JSON containing the structured curriculum with 2026 industry standards.
     await Future.delayed(const Duration(seconds: 3));
 
-    // Generate personalized curriculum based on topic, mastery level, and duration
     final curriculum = _generatePersonalizedCurriculum(
       state.topic,
       state.mastery,
@@ -93,8 +92,7 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
     // Phase 1: Foundation (first 30% of time)
     items.add(
       CurriculumItem(
-        title:
-            '${realResources['foundationTitle'] ?? '$topic - Core Fundamentals'}',
+        title: realResources['foundationTitle'] ?? '$topic - Core Fundamentals',
         type: 'doc',
         url:
             realResources['foundationUrl'] ??
@@ -111,7 +109,7 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
       items.add(
         CurriculumItem(
           title:
-              '${realResources['videoTitle'] ?? 'Advanced Patterns & Architecture'}',
+              realResources['videoTitle'] ?? 'Advanced Patterns & Architecture',
           type: 'video',
           url:
               realResources['videoUrl'] ??
@@ -126,7 +124,7 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
     items.add(
       CurriculumItem(
         title:
-            '${realResources['projectTitle'] ?? 'Production-Ready Project: $topic'}',
+            realResources['projectTitle'] ?? 'Production-Ready Project: $topic',
         type: 'repo',
         url:
             realResources['projectUrl'] ?? 'https://github.com/search?q=$topic',
@@ -140,7 +138,8 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
       items.add(
         CurriculumItem(
           title:
-              '${realResources['advancedTitle'] ?? '$topic Performance Optimization & Scaling'}',
+              realResources['advancedTitle'] ??
+              '$topic Performance Optimization & Scaling',
           type: 'doc',
           url:
               realResources['advancedUrl'] ??
@@ -156,7 +155,8 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
       items.add(
         CurriculumItem(
           title:
-              '${realResources['openSourceTitle'] ?? 'Contributing to $topic Open Source'}',
+              realResources['openSourceTitle'] ??
+              'Contributing to $topic Open Source',
           type: 'doc',
           url:
               realResources['openSourceUrl'] ??
@@ -364,21 +364,22 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
   }
 
   int _parseDurationToWeeks(String duration) {
-    duration = duration.toLowerCase().trim();
+    final cleanDuration = duration.toLowerCase().trim();
+    if (cleanDuration.isEmpty) return 4;
 
-    if (duration.contains('month')) {
-      final match = RegExp(r'(\d+)').firstMatch(duration);
+    if (cleanDuration.contains('month')) {
+      final match = RegExp(r'(\d+)').firstMatch(cleanDuration);
       if (match != null) {
         final months = int.parse(match.group(1)!);
         return months * 4; // Approximate: 1 month = 4 weeks
       }
-    } else if (duration.contains('week')) {
-      final match = RegExp(r'(\d+)').firstMatch(duration);
+    } else if (cleanDuration.contains('week')) {
+      final match = RegExp(r'(\d+)').firstMatch(cleanDuration);
       if (match != null) {
         return int.parse(match.group(1)!);
       }
-    } else if (duration.contains('day')) {
-      final match = RegExp(r'(\d+)').firstMatch(duration);
+    } else if (cleanDuration.contains('day')) {
+      final match = RegExp(r'(\d+)').firstMatch(cleanDuration);
       if (match != null) {
         final days = int.parse(match.group(1)!);
         return (days / 7).round();
@@ -389,6 +390,6 @@ class ForgeNotifier extends StateNotifier<ForgeState> {
   }
 }
 
-final forgeProvider = StateNotifierProvider<ForgeNotifier, ForgeState>((ref) {
-  return ForgeNotifier();
-});
+final forgeProvider = NotifierProvider<ForgeNotifier, ForgeState>(
+  ForgeNotifier.new,
+);

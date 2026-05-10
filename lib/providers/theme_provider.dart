@@ -23,8 +23,9 @@ class ApparelTheme {
   });
 }
 
-class ThemeNotifier extends StateNotifier<ApparelIdentity> {
-  ThemeNotifier() : super(ApparelIdentity.standard);
+class ThemeNotifier extends Notifier<ApparelIdentity> {
+  @override
+  ApparelIdentity build() => ApparelIdentity.standard;
 
   void shiftApparel(ApparelIdentity newIdentity) {
     state = newIdentity;
@@ -116,8 +117,6 @@ class ThemeNotifier extends StateNotifier<ApparelIdentity> {
   }
 }
 
-final themeProvider = StateNotifierProvider<ThemeNotifier, ApparelIdentity>((
-  ref,
-) {
-  return ThemeNotifier();
-});
+final themeProvider = NotifierProvider<ThemeNotifier, ApparelIdentity>(
+  ThemeNotifier.new,
+);

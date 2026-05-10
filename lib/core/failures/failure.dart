@@ -13,36 +13,30 @@ abstract class Failure extends Equatable {
 
 /// Server-related failures
 class ServerFailure extends Failure {
-  const ServerFailure({required String message, String? code})
-    : super(message: message, code: code);
+  const ServerFailure({required super.message, super.code});
 }
 
 /// Network-related failures
 class NetworkFailure extends Failure {
-  const NetworkFailure({required String message, String? code})
-    : super(message: message, code: code);
+  const NetworkFailure({required super.message, super.code});
 }
 
 /// Authentication-related failures
 class AuthFailure extends Failure {
-  const AuthFailure({required String message, String? code})
-    : super(message: message, code: code);
+  const AuthFailure({required super.message, super.code});
 }
 
 /// Validation-related failures
 class ValidationFailure extends Failure {
-  const ValidationFailure({required String message, String? code})
-    : super(message: message, code: code);
+  const ValidationFailure({required super.message, super.code});
 }
 
 /// Generic app failures
 class AppFailure extends Failure {
-  const AppFailure({required String message, String? code})
-    : super(message: message, code: code);
+  const AppFailure({required super.message, super.code});
 }
 
 /// AI/LLM service failures
 class AIServiceFailure extends Failure {
-  const AIServiceFailure({required String message, String? code})
-    : super(message: message, code: code);
+  const AIServiceFailure({required super.message, super.code});
 }

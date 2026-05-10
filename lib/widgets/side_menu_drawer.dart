@@ -115,7 +115,7 @@ class _SideMenuDrawerState extends ConsumerState<SideMenuDrawer> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    onboardingState.computedRole ?? 'Active Agent',
+                    onboardingState.computedRole,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 12,

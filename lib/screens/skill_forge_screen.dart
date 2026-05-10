@@ -23,7 +23,9 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
     final initialState = ref.read(forgeProvider);
     _topicController = TextEditingController(text: initialState.topic);
     _durationController = TextEditingController(text: initialState.duration);
-    _masteryLevel = initialState.mastery.isEmpty ? 'Beginner' : initialState.mastery;
+    _masteryLevel = initialState.mastery.isEmpty
+        ? 'Beginner'
+        : initialState.mastery;
   }
 
   @override
@@ -34,10 +36,15 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
   }
 
   void _forgeCurriculum() {
-    if (_topicController.text.isEmpty || _durationController.text.isEmpty) return;
+    if (_topicController.text.isEmpty || _durationController.text.isEmpty)
+      return;
 
     final notifier = ref.read(forgeProvider.notifier);
-    notifier.setInputs(_topicController.text, _masteryLevel, _durationController.text);
+    notifier.setInputs(
+      _topicController.text,
+      _masteryLevel,
+      _durationController.text,
+    );
     notifier.forgeCurriculum();
   }
 
@@ -97,7 +104,7 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildInputLabel('Current Mastery Level', theme),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
@@ -113,10 +120,12 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                       ),
                     ),
                     items: ['Beginner', 'Intermediate', 'Advanced', 'Pro']
-                        .map((level) => DropdownMenuItem(
-                              value: level,
-                              child: Text(level),
-                            ))
+                        .map(
+                          (level) => DropdownMenuItem(
+                            value: level,
+                            child: Text(level),
+                          ),
+                        )
                         .toList(),
                     onChanged: (val) {
                       if (val != null) {
@@ -125,7 +134,7 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
+
                   _buildInputLabel('Target Duration', theme),
                   const SizedBox(height: 8),
                   TextField(
@@ -143,7 +152,7 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -159,7 +168,10 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 2,
+                              ),
                             )
                           : Text(
                               'Forge Curriculum',
@@ -215,7 +227,7 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: theme.accentColor.withOpacity(0.2),
+                color: theme.accentColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: theme.accentColor),
               ),
@@ -237,14 +249,14 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
               padding: const EdgeInsets.only(bottom: 16.0),
               child: GlassmorphicContainer(
                 padding: const EdgeInsets.all(16),
-                borderColor: theme.secondaryColor.withOpacity(0.3),
+                borderColor: theme.secondaryColor.withValues(alpha: 0.3),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.cardColor.withOpacity(0.5),
+                        color: theme.cardColor.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -278,7 +290,11 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.link, color: theme.accentColor, size: 16),
+                              Icon(
+                                Icons.link,
+                                color: theme.accentColor,
+                                size: 16,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(

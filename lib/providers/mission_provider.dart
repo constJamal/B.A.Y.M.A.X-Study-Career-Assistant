@@ -1,36 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// 1. Standard Class for MissionState (No Freezed)
 class MissionState {
   final String? currentMission;
   final String? intent;
 
-  MissionState({
-    this.currentMission,
-    this.intent,
-  });
+  const MissionState({this.currentMission, this.intent});
 
-  MissionState copyWith({
-    String? currentMission,
-    bool clearMission = false,
-    String? intent,
-    bool clearIntent = false,
-  }) {
+  // Manual copyWith replacing Freezed logic
+  MissionState copyWith({String? currentMission, String? intent}) {
     return MissionState(
-      currentMission: clearMission ? null : (currentMission ?? this.currentMission),
-      intent: clearIntent ? null : (intent ?? this.intent),
+      currentMission: currentMission ?? this.currentMission,
+      intent: intent ?? this.intent,
     );
   }
 }
 
-class MissionNotifier extends StateNotifier<MissionState> {
-  MissionNotifier() : super(MissionState());
+// 2. The Notifier
+class MissionNotifier extends Notifier<MissionState> {
+  @override
+  MissionState build() {
+    return const MissionState();
+  }
 
   void setMission(String mission) {
     state = state.copyWith(currentMission: mission);
   }
 
   void clearMission() {
-    state = state.copyWith(clearMission: true);
+    state = state.copyWith(currentMission: null);
   }
 
   void setIntent(String intent) {
@@ -38,10 +36,11 @@ class MissionNotifier extends StateNotifier<MissionState> {
   }
 
   void clearIntent() {
-    state = state.copyWith(clearIntent: true);
+    state = state.copyWith(intent: null);
   }
 }
 
-final missionProvider = StateNotifierProvider<MissionNotifier, MissionState>((ref) {
-  return MissionNotifier();
-});
+// 3. The Provider
+final missionProvider = NotifierProvider<MissionNotifier, MissionState>(
+  MissionNotifier.new,
+);
