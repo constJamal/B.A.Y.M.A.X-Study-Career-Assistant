@@ -23,9 +23,8 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
     final initialState = ref.read(forgeProvider);
     _topicController = TextEditingController(text: initialState.topic);
     _durationController = TextEditingController(text: initialState.duration);
-    _masteryLevel = initialState.mastery.isEmpty
-        ? 'Beginner'
-        : initialState.mastery;
+    _masteryLevel =
+        initialState.mastery.isEmpty ? 'Beginner' : initialState.mastery;
   }
 
   @override
@@ -36,8 +35,9 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
   }
 
   void _forgeCurriculum() {
-    if (_topicController.text.isEmpty || _durationController.text.isEmpty)
+    if (_topicController.text.isEmpty || _durationController.text.isEmpty) {
       return;
+    }
 
     final notifier = ref.read(forgeProvider.notifier);
     notifier.setInputs(
@@ -104,11 +104,10 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
                   _buildInputLabel('Current Mastery Level', theme),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _masteryLevel,
+                    initialValue: _masteryLevel,
                     dropdownColor: theme.cardColor,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
@@ -134,7 +133,6 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-
                   _buildInputLabel('Target Duration', theme),
                   const SizedBox(height: 8),
                   TextField(
@@ -152,7 +150,6 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -189,6 +186,22 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
             const SizedBox(height: 32),
             if (forgeState.isForging)
               const ShimmerCardList(count: 3, itemHeight: 120)
+            else if (forgeState.error != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: Text(
+                  forgeState.error!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 14,
+                  ),
+                ),
+              )
             else if (forgeState.curriculum.isNotEmpty)
               _buildTechnicalSpecUI(forgeState, theme),
           ],
@@ -270,14 +283,41 @@ class _SkillForgeScreenState extends ConsumerState<SkillForgeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            item.title,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: theme.fontFamily,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.title,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: theme.fontFamily,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.primaryColor.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: theme.primaryColor,
+                                  ),
+                                ),
+                                child: Text(
+                                  item.phaseDuration,
+                                  style: TextStyle(
+                                    color: theme.primaryColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 6),
                           Text(

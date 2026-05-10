@@ -1,16 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../core/constants.dart';
 
 class CurriculumItem {
   final String title;
   final String type; // 'doc', 'video', 'repo'
   final String url;
   final String description;
+  final String
+      phaseDuration; // Duration for this learning phase (e.g., "3 days", "1 week")
 
   CurriculumItem({
     required this.title,
     required this.type,
     required this.url,
     required this.description,
+    required this.phaseDuration,
   });
 }
 
@@ -21,6 +27,7 @@ class ForgeState {
   final double progress;
   final List<CurriculumItem> curriculum;
   final bool isForging;
+  final String? error; // For error handling
 
   ForgeState({
     this.topic = '',
@@ -29,6 +36,7 @@ class ForgeState {
     this.progress = 0.0,
     this.curriculum = const [],
     this.isForging = false,
+    this.error,
   });
 
   // This "manual" copyWith replaces the one Freezed usually makes
@@ -39,6 +47,7 @@ class ForgeState {
     double? progress,
     List<CurriculumItem>? curriculum,
     bool? isForging,
+    String? error,
   }) {
     return ForgeState(
       topic: topic ?? this.topic,
@@ -47,6 +56,7 @@ class ForgeState {
       progress: progress ?? this.progress,
       curriculum: curriculum ?? this.curriculum,
       isForging: isForging ?? this.isForging,
+      error: error ?? this.error,
     );
   }
 }
@@ -64,21 +74,146 @@ class ForgeNotifier extends Notifier<ForgeState> {
   }
 
   Future<void> forgeCurriculum() async {
-    state = state.copyWith(isForging: true);
+    state = state.copyWith(isForging: true, error: null);
 
-    await Future.delayed(const Duration(seconds: 3));
+    print(
+        '🔨 FORGE START — Topic: ${state.topic} | Mastery: ${state.mastery} | Duration: ${state.duration}');
 
-    final curriculum = _generatePersonalizedCurriculum(
-      state.topic,
-      state.mastery,
-      state.duration,
-    );
+    try {
+      // Call Supabase Edge Function with structured parameters
+      final roadmapData = await _callGenerateRoadmapAPI(
+        topic: state.topic,
+        duration: state.duration,
+        masteryLevel: state.mastery,
+      );
 
-    state = state.copyWith(
-      isForging: false,
-      curriculum: curriculum,
-      progress: 0.1, // Reset progress for the new forge
-    );
+      print('📦 AI Response received: ${roadmapData?.length ?? 0} items');
+
+      if (roadmapData != null && roadmapData.isNotEmpty) {
+        final curriculum = _parseCurriculumFromAI(roadmapData);
+
+        print('✅ USING AI RESPONSE: ${curriculum.length} curriculum items');
+        for (var item in curriculum) {
+          print('   - ${item.title} (${item.phaseDuration})');
+        }
+
+        state = state.copyWith(
+          isForging: false,
+          curriculum: curriculum,
+          progress: 0.1,
+          error: null,
+        );
+      } else {
+        print('⚠️ AI API returned empty result — falling back to generic roadmap');
+        final curriculum = _generatePersonalizedCurriculum(
+          state.topic,
+          state.mastery,
+          state.duration,
+        );
+
+        state = state.copyWith(
+          isForging: false,
+          curriculum: curriculum,
+          progress: 0.1,
+          error: 'Using offline roadmap — AI service unavailable',
+        );
+      }
+    } catch (e) {
+      print('❌ ERROR forging curriculum: $e');
+      final curriculum = _generatePersonalizedCurriculum(
+        state.topic,
+        state.mastery,
+        state.duration,
+      );
+
+      state = state.copyWith(
+        isForging: false,
+        curriculum: curriculum,
+        progress: 0.1,
+        error: 'Offline roadmap — network error: $e',
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // API layer — sends structured fields; prompt is built server-side
+  // -------------------------------------------------------------------------
+
+  /// Calls the Supabase `generate-roadmap` Edge Function.
+  /// Passes [topic], [duration], and [masteryLevel] as structured JSON so the
+  /// server can calibrate intensity and complexity without the client needing
+  /// to know the full prompt format.
+  Future<List<Map<String, dynamic>>?> _callGenerateRoadmapAPI({
+    required String topic,
+    required String duration,
+    required String masteryLevel,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${AppConfig.supabaseUrl}/functions/v1/generate-roadmap',
+      );
+
+      print('🌐 POST $url');
+      print('   Payload: topic=$topic | duration=$duration | mastery=$masteryLevel');
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
+              'apikey': AppConfig.supabaseAnonKey,
+            },
+            body: jsonEncode({
+              'topic': topic,
+              'duration': duration,
+              'masteryLevel': masteryLevel,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      print('📡 HTTP ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+
+        // Edge function returns a bare JSON array
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(decoded);
+        }
+        // Defensive: handle wrapped formats just in case
+        if (decoded is Map) {
+          for (final key in ['milestones', 'data', 'curriculum']) {
+            if (decoded[key] is List) {
+              return List<Map<String, dynamic>>.from(decoded[key] as List);
+            }
+          }
+        }
+        print('⚠️ Unexpected response shape: ${response.body.substring(0, 200)}');
+        return null;
+      } else {
+        print('❌ Non-200 status: ${response.statusCode} — ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Roadmap API exception: $e');
+      return null;
+    }
+  }
+
+  /// Parse AI response into CurriculumItem list with phase durations
+  List<CurriculumItem> _parseCurriculumFromAI(
+    List<Map<String, dynamic>> aiResponse,
+  ) {
+    return aiResponse
+        .map((item) => CurriculumItem(
+              title: item['title'] ?? 'Learning Module',
+              type: item['type'] ?? 'doc',
+              url: item['url'] ?? 'https://example.com',
+              description: item['description'] ?? 'Continue learning',
+              phaseDuration: item['phaseDuration'] ?? '1 week',
+            ))
+        .toList();
   }
 
   List<CurriculumItem> _generatePersonalizedCurriculum(
@@ -88,39 +223,43 @@ class ForgeNotifier extends Notifier<ForgeState> {
   ) {
     final items = <CurriculumItem>[];
     final realResources = _getRealResourcesForTopic(topic, masteryLevel);
+    final totalWeeks = _parseDurationToWeeks(duration);
 
-    // Phase 1: Foundation (first 30% of time)
+    // Phase 1: Foundation (30% of time)
+    final phase1Weeks = (totalWeeks * 0.3).round();
     items.add(
       CurriculumItem(
         title: realResources['foundationTitle'] ?? '$topic - Core Fundamentals',
         type: 'doc',
-        url:
-            realResources['foundationUrl'] ??
+        url: realResources['foundationUrl'] ??
             'https://docs.example.com/$topic-fundamentals',
-        description:
-            '${realResources['foundationDesc'] ?? 'Essential concepts and foundations tailored for $masteryLevel level learners.'}  Target: ${_getPhaseWeeks(duration, 0.3)} weeks of study.',
+        description: realResources['foundationDesc'] ??
+            'Essential concepts and foundations tailored for $masteryLevel level learners.',
+        phaseDuration: '${phase1Weeks > 0 ? phase1Weeks : 1} weeks',
       ),
     );
 
-    // Phase 2: Deep Dive (middle 40% of time)
+    // Phase 2: Deep Dive (40% of time) - for Intermediate and above
     if (masteryLevel == 'Intermediate' ||
         masteryLevel == 'Advanced' ||
         masteryLevel == 'Pro') {
+      final phase2Weeks = (totalWeeks * 0.4).round();
       items.add(
         CurriculumItem(
           title:
               realResources['videoTitle'] ?? 'Advanced Patterns & Architecture',
           type: 'video',
-          url:
-              realResources['videoUrl'] ??
+          url: realResources['videoUrl'] ??
               'https://www.youtube.com/results?search_query=$topic+tutorial',
-          description:
-              '${realResources['videoDesc'] ?? 'Industry-standard design patterns and best practices.'}  Target: ${_getPhaseWeeks(duration, 0.4)} weeks of immersion.',
+          description: realResources['videoDesc'] ??
+              'Industry-standard design patterns and best practices.',
+          phaseDuration: '${phase2Weeks > 0 ? phase2Weeks : 1} weeks',
         ),
       );
     }
 
-    // Phase 3: Practical Implementation (final 30% of time)
+    // Phase 3: Practical Implementation (30% of time)
+    final phase3Weeks = (totalWeeks * 0.3).round();
     items.add(
       CurriculumItem(
         title:
@@ -128,42 +267,41 @@ class ForgeNotifier extends Notifier<ForgeState> {
         type: 'repo',
         url:
             realResources['projectUrl'] ?? 'https://github.com/search?q=$topic',
-        description:
-            '${realResources['projectDesc'] ?? 'Build a real-world application using $topic at $masteryLevel level.'}  Target: ${_getPhaseWeeks(duration, 0.3)} weeks to complete.',
+        description: realResources['projectDesc'] ??
+            'Build a real-world application using $topic at $masteryLevel level.',
+        phaseDuration: '${phase3Weeks > 0 ? phase3Weeks : 1} weeks',
       ),
     );
 
     // Add specialized content based on mastery level
     if (masteryLevel == 'Advanced' || masteryLevel == 'Pro') {
+      final advancedWeeks = 1;
       items.add(
         CurriculumItem(
-          title:
-              realResources['advancedTitle'] ??
+          title: realResources['advancedTitle'] ??
               '$topic Performance Optimization & Scaling',
           type: 'doc',
-          url:
-              realResources['advancedUrl'] ??
+          url: realResources['advancedUrl'] ??
               'https://github.com/topics/$topic-performance',
-          description:
-              realResources['advancedDesc'] ??
+          description: realResources['advancedDesc'] ??
               'Advanced optimization techniques and scaling strategies for production systems.',
+          phaseDuration: '${advancedWeeks} week',
         ),
       );
     }
 
     if (masteryLevel == 'Pro') {
+      final proWeeks = 1;
       items.add(
         CurriculumItem(
-          title:
-              realResources['openSourceTitle'] ??
+          title: realResources['openSourceTitle'] ??
               'Contributing to $topic Open Source',
           type: 'doc',
-          url:
-              realResources['openSourceUrl'] ??
+          url: realResources['openSourceUrl'] ??
               'https://github.com/topics/$topic',
-          description:
-              realResources['openSourceDesc'] ??
+          description: realResources['openSourceDesc'] ??
               'Master $topic by contributing to real-world open source projects and learning from core maintainers.',
+          phaseDuration: '${proWeeks} week',
         ),
       );
     }
@@ -354,13 +492,6 @@ class ForgeNotifier extends Notifier<ForgeState> {
       'openSourceUrl': 'https://github.com/topics/$topic',
       'openSourceDesc': 'Find open-source projects to contribute to.',
     };
-  }
-
-  String _getPhaseWeeks(String duration, double percentage) {
-    // Parse duration string like "3 months", "12 weeks", "90 days"
-    final weeks = _parseDurationToWeeks(duration);
-    final phaseWeeks = (weeks * percentage).round();
-    return phaseWeeks.toString();
   }
 
   int _parseDurationToWeeks(String duration) {

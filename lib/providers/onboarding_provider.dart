@@ -1,4 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../core/constants.dart';
 
 // --- MODELS ---
 
@@ -21,12 +24,18 @@ class OnboardingState {
   final Map<int, String> answers;
   final bool isRegenerationRequired;
   final bool hasStarted;
+  final String? aiRole;
+  final String? aiDomain;
+  final bool isGeneratingPersonality;
 
   const OnboardingState({
     this.currentIndex = 0,
     this.answers = const {},
     this.isRegenerationRequired = false,
     this.hasStarted = false,
+    this.aiRole,
+    this.aiDomain,
+    this.isGeneratingPersonality = false,
   });
 
   // Manual copyWith to replace Freezed functionality
@@ -35,6 +44,9 @@ class OnboardingState {
     Map<int, String>? answers,
     bool? isRegenerationRequired,
     bool? hasStarted,
+    String? aiRole,
+    String? aiDomain,
+    bool? isGeneratingPersonality,
   }) {
     return OnboardingState(
       currentIndex: currentIndex ?? this.currentIndex,
@@ -42,6 +54,10 @@ class OnboardingState {
       isRegenerationRequired:
           isRegenerationRequired ?? this.isRegenerationRequired,
       hasStarted: hasStarted ?? this.hasStarted,
+      aiRole: aiRole ?? this.aiRole,
+      aiDomain: aiDomain ?? this.aiDomain,
+      isGeneratingPersonality:
+          isGeneratingPersonality ?? this.isGeneratingPersonality,
     );
   }
 
@@ -223,13 +239,124 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
   void resetRegenerationFlag() =>
       state = state.copyWith(isRegenerationRequired: false);
 
+  /// Generate AI-driven personality based on collected answers
+  /// Calls Supabase Edge Function or API to determine optimal role and domain
+  Future<void> generateAIPersonality() async {
+    // Set loading state
+    state = state.copyWith(isGeneratingPersonality: true);
+
+    try {
+      // Collect answers for AI prompt
+      final skills = state.answers[0] ?? 'Not specified';
+      final passions = state.answers[1] ?? 'Not specified';
+      final workStyle = state.answers[2] ?? 'Not specified';
+      final mindset = state.answers[3] ?? 'Not specified';
+      final expertise = state.answers[4] ?? 'Not specified';
+      final environment = state.answers[5] ?? 'Not specified';
+      final learningStyle = state.answers[6] ?? 'Not specified';
+      final riskTolerance = state.answers[7] ?? 'Not specified';
+      final financialGoal = state.answers[8] ?? 'Not specified';
+      final timeCommitment = state.answers[10] ?? 'Not specified';
+
+      // Construct detailed prompt for AI
+      final prompt = '''
+Based on the following professional profile, determine the most high-value, modern job title and professional domain for this user in 2026:
+
+Skills & Stack: $skills
+Core Passions: $passions
+Work Style: $workStyle
+Professional Mindset: $mindset
+Expertise Level: $expertise
+Work Environment: $environment
+Learning Style: $learningStyle
+Risk Tolerance: $riskTolerance
+Financial Goal: $financialGoal
+Time Commitment: $timeCommitment
+
+Please respond with ONLY a JSON object in this format (no markdown, no code blocks):
+{
+  "role": "Exact job title or role name",
+  "domain": "Professional domain (e.g., Entrepreneurial, Corporate, Freelance, Academic)",
+  "reasoning": "Brief explanation of why this role fits"
+}
+''';
+
+      // Call AI API - using OpenAI as default (can be replaced with Supabase Edge Function)
+      // Configuration should be in environment variables or secure storage
+
+      // For now, use a mock response (replace with actual API call in production)
+      final aiResponse = await _callAIPersonalityAPI(prompt);
+
+      // Parse response
+      if (aiResponse != null) {
+        state = state.copyWith(
+          aiRole: aiResponse['role'],
+          aiDomain: aiResponse['domain'],
+          isGeneratingPersonality: false,
+        );
+      } else {
+        // Fallback to hardcoded logic if API fails
+        state = state.copyWith(
+          aiRole: state.computedRole,
+          aiDomain: state.identityDomain,
+          isGeneratingPersonality: false,
+        );
+      }
+    } catch (e) {
+      print('Error generating AI personality: $e');
+      // Fallback on error
+      state = state.copyWith(
+        aiRole: state.computedRole,
+        aiDomain: state.identityDomain,
+        isGeneratingPersonality: false,
+      );
+    }
+  }
+
+  /// Call AI API to generate personality
+  /// Returns parsed JSON response or null if failed
+  Future<Map<String, dynamic>?> _callAIPersonalityAPI(String prompt) async {
+    try {
+      // Use Supabase Edge Function with configuration from constants
+      final supabaseUrl = AppConfig.supabaseUrl;
+      final supabaseKey = AppConfig.supabaseAnonKey;
+      const functionName = 'generate-ai-personality';
+
+      final response = await http
+          .post(
+            Uri.parse('$supabaseUrl/functions/v1/$functionName'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $supabaseKey',
+            },
+            body: jsonEncode({
+              'prompt': prompt,
+              'model': 'gpt-4',
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        return {
+          'role': jsonResponse['role'] ?? 'AI-Determined Professional',
+          'domain': jsonResponse['domain'] ?? 'Strategic Professional',
+        };
+      }
+      return null;
+    } catch (e) {
+      print('API Error: $e');
+      return null;
+    }
+  }
+
   bool get isComplete =>
       state.currentIndex == questions.length - 1 &&
       state.answers.containsKey(state.currentIndex);
 
   // Proxy getters for UI compatibility
-  String get computedRole => state.computedRole;
-  String get identityDomain => state.identityDomain;
+  String get computedRole => state.aiRole ?? state.computedRole;
+  String get identityDomain => state.aiDomain ?? state.identityDomain;
   bool get isEntrepreneurial => state.isEntrepreneurial;
 }
 
@@ -237,5 +364,5 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
 
 final onboardingProvider =
     NotifierProvider<OnboardingNotifier, OnboardingState>(
-      OnboardingNotifier.new,
-    );
+  OnboardingNotifier.new,
+);

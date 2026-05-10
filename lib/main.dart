@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async'; // Required for the Timer
 import 'core/constants.dart';
 import 'core/theme_manager.dart';
 import 'core/utils/retry_util.dart';
@@ -91,9 +92,80 @@ class BaymaxApp extends StatelessWidget {
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: mode,
-          home: const AuthCheck(),
+          // App now starts at the SplashScreen
+          home: const SplashScreen(), 
         );
       },
+    );
+  }
+}
+
+/// --- NEW SPLASH SCREEN WIDGET ---
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 2-second timer then navigate to AuthCheck
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AuthCheck()),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This design uses your Brand Blue and Cyan from AppConfig
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D1B2A), 
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Hero Icon
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppConfig.accentTeal.withOpacity(0.1),
+              ),
+              child: const Icon(
+                Icons.bolt_rounded,
+                size: 80,
+                color: AppConfig.accentTeal,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "B.A.Y.M.A.X.",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 6,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "AI SKILL ARCHITECT",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.5),
+                letterSpacing: 2,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -107,6 +179,7 @@ class AuthCheck extends StatelessWidget {
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         final session = snapshot.data?.session;
+        // If no session, go to login. If session exists, go to main dashboard.
         return session == null ? const LoginScreen() : const MainNavigator();
       },
     );

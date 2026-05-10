@@ -1,0 +1,13 @@
+{
+  // Enable Deno language server only for the supabase/functions folder
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.unstable": true,
+  "deno.lint": true,
+  "deno.config": "supabase/functions/deno.json",
+
+  // Disable VS Code's built-in TS server for files inside functions/
+  // so it doesn't compete with the Deno language server
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}

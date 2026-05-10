@@ -1,0 +1,17 @@
+# Supabase Configuration
+
+[db]
+port = 5432
+major_version = 15
+
+[api]
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+max_rows = 1000
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
