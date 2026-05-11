@@ -73,30 +73,3 @@ abstract class SkillForgeRepository {
     Map<String, dynamic> knowledgeGraph,
   );
 }
-
-/// Abstract study buddy repository (with RAG support)
-abstract class StudyBuddyRepository {
-  /// Summarize content from uploaded PDF with RAG
-  /// PDFs are processed as vector embeddings using pgvector
-  Future<Either<Failure, StudySummary>> summarizeDocument(String documentPath);
-
-  /// Stream document summarization with word-by-word response
-  Stream<Either<Failure, String>> streamDocumentSummary(String documentPath);
-
-  /// Query document with RAG for specific questions
-  Future<Either<Failure, StudySummary>> queryDocument(
-    String documentId,
-    String query,
-  );
-
-  /// Upload and embed document for future RAG queries
-  Future<Either<Failure, String>> uploadDocument(
-    String userId,
-    String filePath,
-  );
-
-  /// Get source citations for a summary
-  Future<Either<Failure, List<SourceCitation>>> getSourceCitations(
-    String summaryId,
-  );
-}

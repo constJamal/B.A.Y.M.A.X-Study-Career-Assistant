@@ -20,26 +20,26 @@ class SkillModel with _$SkillModel {
       _$SkillModelFromJson(json);
 
   factory SkillModel.fromEntity(Skill skill) => SkillModel(
-    skillName: skill.skillName,
-    description: skill.description,
-    learningResources: skill.learningResources,
-    practiceProjects: skill.practiceProjects,
-    timeEstimate: skill.timeEstimate,
-    prerequisites: skill.prerequisites,
-    nextSkills: skill.nextSkills,
-  );
+        skillName: skill.skillName,
+        description: skill.description,
+        learningResources: skill.learningResources,
+        practiceProjects: skill.practiceProjects,
+        timeEstimate: skill.timeEstimate,
+        prerequisites: skill.prerequisites,
+        nextSkills: skill.nextSkills,
+      );
 }
 
 extension SkillModelX on SkillModel {
   Skill toEntity() => Skill(
-    skillName: skillName,
-    description: description,
-    learningResources: learningResources,
-    practiceProjects: practiceProjects,
-    timeEstimate: timeEstimate,
-    prerequisites: prerequisites,
-    nextSkills: nextSkills,
-  );
+        skillName: skillName,
+        description: description,
+        learningResources: learningResources,
+        practiceProjects: practiceProjects,
+        timeEstimate: timeEstimate,
+        prerequisites: prerequisites,
+        nextSkills: nextSkills,
+      );
 }
 
 @freezed
@@ -56,87 +56,22 @@ class CareerPathModel with _$CareerPathModel {
       _$CareerPathModelFromJson(json);
 
   factory CareerPathModel.fromEntity(CareerPath path) => CareerPathModel(
-    title: path.title,
-    summary: path.summary,
-    keySkills: path.keySkills,
-    nextSteps: path.nextSteps,
-    relevanceScore: path.relevanceScore,
-  );
+        title: path.title,
+        summary: path.summary,
+        keySkills: path.keySkills,
+        nextSteps: path.nextSteps,
+        relevanceScore: path.relevanceScore,
+      );
 }
 
 extension CareerPathModelX on CareerPathModel {
   CareerPath toEntity() => CareerPath(
-    title: title,
-    summary: summary,
-    keySkills: keySkills,
-    nextSteps: nextSteps,
-    relevanceScore: relevanceScore,
-  );
-}
-
-@freezed
-class SourceCitationModel with _$SourceCitationModel {
-  const factory SourceCitationModel({
-    required String text,
-    required int startIndex,
-    required int endIndex,
-    required String page,
-    required String documentSection,
-  }) = _SourceCitationModel;
-
-  factory SourceCitationModel.fromJson(Map<String, dynamic> json) =>
-      _$SourceCitationModelFromJson(json);
-
-  factory SourceCitationModel.fromEntity(SourceCitation citation) =>
-      SourceCitationModel(
-        text: citation.text,
-        startIndex: citation.startIndex,
-        endIndex: citation.endIndex,
-        page: citation.page,
-        documentSection: citation.documentSection,
+        title: title,
+        summary: summary,
+        keySkills: keySkills,
+        nextSteps: nextSteps,
+        relevanceScore: relevanceScore,
       );
-}
-
-extension SourceCitationModelX on SourceCitationModel {
-  SourceCitation toEntity() => SourceCitation(
-    text: text,
-    startIndex: startIndex,
-    endIndex: endIndex,
-    page: page,
-    documentSection: documentSection,
-  );
-}
-
-@freezed
-class StudySummaryModel with _$StudySummaryModel {
-  const factory StudySummaryModel({
-    required String summary,
-    required List<SourceCitationModel> citations,
-    required String sourceDocumentId,
-    required DateTime generatedAt,
-  }) = _StudySummaryModel;
-
-  factory StudySummaryModel.fromJson(Map<String, dynamic> json) =>
-      _$StudySummaryModelFromJson(json);
-
-  factory StudySummaryModel.fromEntity(StudySummary summary) =>
-      StudySummaryModel(
-        summary: summary.summary,
-        citations: summary.citations
-            .map((c) => SourceCitationModel.fromEntity(c))
-            .toList(),
-        sourceDocumentId: summary.sourceDocumentId,
-        generatedAt: summary.generatedAt,
-      );
-}
-
-extension StudySummaryModelX on StudySummaryModel {
-  StudySummary toEntity() => StudySummary(
-    summary: summary,
-    citations: citations.map((c) => c.toEntity()).toList(),
-    sourceDocumentId: sourceDocumentId,
-    generatedAt: generatedAt,
-  );
 }
 
 @freezed
@@ -162,9 +97,9 @@ class SkillRoadmapModel with _$SkillRoadmapModel {
 
 extension SkillRoadmapModelX on SkillRoadmapModel {
   SkillRoadmap toEntity() => SkillRoadmap(
-    skills: skills.map((s) => s.toEntity()).toList(),
-    skillDependencies: skillDependencies,
-    generatedPrompt: generatedPrompt,
-    criticFeedback: criticFeedback,
-  );
+        skills: skills.map((s) => s.toEntity()).toList(),
+        skillDependencies: skillDependencies,
+        generatedPrompt: generatedPrompt,
+        criticFeedback: criticFeedback,
+      );
 }

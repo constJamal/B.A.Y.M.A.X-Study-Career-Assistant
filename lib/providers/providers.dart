@@ -6,7 +6,6 @@ import '../data/datasources/auth_remote_datasource.dart';
 import '../data/repositories/auth_repository_impl.dart';
 import '../data/repositories/career_mapping_repository_impl.dart';
 import '../data/repositories/skill_forge_repository_impl.dart';
-import '../data/repositories/study_buddy_repository_impl.dart';
 import '../domain/entities/entities.dart';
 import '../domain/repositories/repositories.dart';
 
@@ -58,12 +57,6 @@ final skillForgeRepositoryProvider = Provider<SkillForgeRepository>((ref) {
   final aiDataSource = ref.watch(aiRemoteDataSourceProvider);
   final authDataSource = ref.watch(authRemoteDataSourceProvider);
   return SkillForgeRepositoryImpl(aiDataSource, authDataSource);
-});
-
-/// Study buddy repository provider
-final studyBuddyRepositoryProvider = Provider<StudyBuddyRepository>((ref) {
-  final dataSource = ref.watch(aiRemoteDataSourceProvider);
-  return StudyBuddyRepositoryImpl(dataSource);
 });
 
 // ============ State Providers ============
@@ -139,34 +132,6 @@ final skillRoadmapStreamProvider = StreamProvider.family<String, String>((
 ) async* {
   final repository = ref.watch(skillForgeRepositoryProvider);
   yield* repository.streamSkillRoadmap(skillName).asyncMap((either) {
-    return either.fold(
-      (failure) => throw Exception(failure.message),
-      (text) => text,
-    );
-  });
-});
-
-/// Document summary provider
-final documentSummaryProvider = FutureProvider.family<StudySummary, String>((
-  ref,
-  documentId,
-) async {
-  final repository = ref.watch(studyBuddyRepositoryProvider);
-  final result = await repository.summarizeDocument(documentId);
-
-  return result.fold(
-    (failure) => throw Exception(failure.message),
-    (summary) => summary,
-  );
-});
-
-/// Document summary stream provider
-final documentSummaryStreamProvider = StreamProvider.family<String, String>((
-  ref,
-  documentId,
-) async* {
-  final repository = ref.watch(studyBuddyRepositoryProvider);
-  yield* repository.streamDocumentSummary(documentId).asyncMap((either) {
     return either.fold(
       (failure) => throw Exception(failure.message),
       (text) => text,

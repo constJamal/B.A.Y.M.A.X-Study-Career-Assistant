@@ -42,14 +42,14 @@ class User extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    email,
-    fullName,
-    section,
-    major,
-    createdAt,
-    knowledgeGraph,
-  ];
+        id,
+        email,
+        fullName,
+        section,
+        major,
+        createdAt,
+        knowledgeGraph,
+      ];
 }
 
 /// Career path entity
@@ -70,12 +70,12 @@ class CareerPath extends Equatable {
 
   @override
   List<Object?> get props => [
-    title,
-    summary,
-    keySkills,
-    nextSteps,
-    relevanceScore,
-  ];
+        title,
+        summary,
+        keySkills,
+        nextSteps,
+        relevanceScore,
+      ];
 }
 
 /// Skill entity
@@ -100,63 +100,14 @@ class Skill extends Equatable {
 
   @override
   List<Object?> get props => [
-    skillName,
-    description,
-    learningResources,
-    practiceProjects,
-    timeEstimate,
-    prerequisites,
-    nextSkills,
-  ];
-}
-
-/// Study buddy summary with source citations
-class StudySummary extends Equatable {
-  final String summary;
-  final List<SourceCitation> citations;
-  final String sourceDocumentId;
-  final DateTime generatedAt;
-
-  const StudySummary({
-    required this.summary,
-    required this.citations,
-    required this.sourceDocumentId,
-    required this.generatedAt,
-  });
-
-  @override
-  List<Object?> get props => [
-    summary,
-    citations,
-    sourceDocumentId,
-    generatedAt,
-  ];
-}
-
-/// Source citation for RAG-based responses
-class SourceCitation extends Equatable {
-  final String text;
-  final int startIndex;
-  final int endIndex;
-  final String page;
-  final String documentSection;
-
-  const SourceCitation({
-    required this.text,
-    required this.startIndex,
-    required this.endIndex,
-    required this.page,
-    required this.documentSection,
-  });
-
-  @override
-  List<Object?> get props => [
-    text,
-    startIndex,
-    endIndex,
-    page,
-    documentSection,
-  ];
+        skillName,
+        description,
+        learningResources,
+        practiceProjects,
+        timeEstimate,
+        prerequisites,
+        nextSkills,
+      ];
 }
 
 /// AI-generated roadmap with skill progression
@@ -175,9 +126,9 @@ class SkillRoadmap extends Equatable {
 
   @override
   List<Object?> get props => [
-    skills,
-    skillDependencies,
-    generatedPrompt,
-    criticFeedback,
-  ];
+        skills,
+        skillDependencies,
+        generatedPrompt,
+        criticFeedback,
+      ];
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'roadmap_screen.dart';
 import 'skill_forge_screen.dart';
-import 'study_buddy_screen.dart';
 import '../core/constants.dart';
 
 class MainNavigator extends StatefulWidget {
@@ -18,7 +17,6 @@ class _MainNavigatorState extends State<MainNavigator> {
     const HomeScreen(),
     const RoadmapScreen(),
     const SkillForgeScreen(),
-    const StudyBuddyScreen(),
   ];
 
   @override
@@ -45,10 +43,6 @@ class _MainNavigatorState extends State<MainNavigator> {
           BottomNavigationBarItem(
             icon: Icon(Icons.auto_fix_high_rounded),
             label: "Forge",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school_rounded),
-            label: "Study Buddy",
           ),
         ],
       ),
